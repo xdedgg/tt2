@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>流程终端处理</title>
+    <style>
+        /* 全局重置与布局 - 调整为常规尺寸 */
+        body {
+            margin: 0;
+            padding: 0rem;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            min-height: 100vh;
+        }
+
+        /* 流程图区域容器 */
+        .diagram-container {
+            width: 100%;
+            max-width: 1000px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* SVG 样式 */
+        svg {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .node-circle {
+            fill: #ffffff;
+            stroke: #2563eb;
+            stroke-width: 2.5px;
+            transition: all 0.3s ease;
+        }
+
+        .node-text {
+            font-size: 18px;
+            font-weight: bold;
+            fill: #2563eb;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            user-select: none;
+        }
+
+        .node-label {
+            font-size: 14px;
+            fill: #475569;
+            text-anchor: middle;
+            font-weight: 500;
+        }
+
+        .connection-line {
+            stroke: #cbd5e1;
+            stroke-width: 3px;
+            transition: stroke 0.3s;
+            opacity: 0.8;
+        }
+
+        .connection-line.connected {
+            opacity: 1;
+            stroke: #2563eb;
+        }
+
+        .connection-line.broken {
+            stroke: #ef4444;
+            stroke-dasharray: 8, 8;
+            animation: dash 1s linear infinite;
+        }
+
+        @keyframes dash {
+            to { stroke-dashoffset: -16; }
+        }
+
+        /* 断裂点交互按钮 */
+        .break-point {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .break-point:hover circle.bp-bg {
+            fill: #fee2e2;
+        }
+
+        .break-point:hover circle.bp-icon {
+            fill: #ef4444;
+        }
+
+        .bp-bg {
+            fill: transparent;
+            transition: fill 0.2s;
+        }
+
+        .bp-icon {
+            fill: #94a3b8;
+            transition: fill 0.2s;
+            pointer-events: none;
+        }
+
+        /* 主内容区域 */
+        .content-container {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* 下方处理方案区域 */
+        .solution-panel {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            border: 1px solid #e2e8f0;
+            min-height: 180px;
+        }
+
+        /* 默认空状态 */
+        .empty-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #94a3b8;
+            font-size: 1rem;
+            border: 2px dashed #e2e8f0;
+            border-radius: 8px;
+            padding: 2rem;
+        }
+
+        /* 方案内容样式 */
+        .solution-content {
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 优化后的异常点说明样式 */
+        .solution-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #fee2e2;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .solution-title::before {
+            content: '';
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .solution-group {
+            margin-bottom: 1.5rem;
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1.25rem;
+            border-left: 4px solid #2563eb;
+            transition: transform 0.2s;
+        }
+
+        .solution-group:hover {
+            transform: translateX(4px);
+        }
+
+        .solution-scenario {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 0.75rem;
+            font-size: 1.05rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .solution-scenario::before {
+            content: '▶';
+            color: #2563eb;
+            font-size: 0.9rem;
+            margin-right: 0.25rem;
+        }
+
+        .solution-action {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+            color: #475569;
+            font-size: 0.95rem;
+            padding-left: 0.5rem;
+        }
+
+        .solution-action strong {
+            color: #ef4444;
+            font-weight: 600;
+            background-color: #fef2f2;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        
+        .solution-note {
+            display: inline-block;
+            background-color: #e0f2fe;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: #0369a1;
+            margin-left: 0.5rem;
+            border: 1px solid #bae6fd;
+        }
+
+        /* 重要业务规则区域 */
+        .rules-panel {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            border: 1px solid #e2e8f0;
+            margin-top: 1rem;
+        }
+
+        .rules-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #dbeafe;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .rules-title::before {
+            content: '📋';
+            font-size: 1.2rem;
+        }
+
+        .rules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .rule-card {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 1.5rem;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .rule-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 12px -2px rgba(0, 0, 0, 0.1);
+            border-color: #2563eb;
+        }
+
+        .rule-icon {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            width: 48px;
+            height: 48px;
+            background: #dbeafe;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #2563eb;
+        }
+
+        .rule-card:nth-child(2) .rule-icon {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .rule-card:nth-child(3) .rule-icon {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .rule-card:nth-child(4) .rule-icon {
+            background: #fce7f3;
+            color: #db2777;
+        }
+
+        .rule-summary {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 0.75rem;
+            font-size: 1rem;
+            line-height: 1.4;
+        }
+
+        .rule-details {
+            font-size: 0.9rem;
+            color: #64748b;
+            line-height: 1.5;
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .rule-card.active .rule-details {
+            opacity: 1;
+            max-height: 200px;
+            margin-top: 0.75rem;
+        }
+
+        .rule-highlight {
+            display: inline-block;
+            background-color: #fef3c7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: #92400e;
+            margin-top: 0.5rem;
+            border-left: 3px solid #f59e0b;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+                gap: 1rem;
+            }
+            .diagram-container, .solution-panel, .rules-panel {
+                padding: 1rem;
+            }
+            .solution-title, .rules-title {
+                font-size: 1.1rem;
+            }
+            .solution-action {
+                font-size: 0.9rem;
+            }
+            .rules-grid {
+                grid-template-columns: 1fr;
+            }
+            .solution-group {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 上方：流程图展示区 -->
+<section class="diagram-container" id="diagramContainer">
+    <div style="text-align:center; color: #999; font-size: 0.9rem; padding: 2rem;">正在加载流程图...</div>
+</section>
+
+<!-- 主内容区域 -->
+<div class="content-container">
+    <!-- 下方：处理方式区域 -->
+    <section class="solution-panel">
+        <!-- 默认空状态 -->
+        <div class="empty-state" id="emptyState">
+            请点击上方流程中的中断位置查看详细处理方案
+        </div>
+
+        <!-- 方案内容 (动态显示) -->
+        <div class="solution-content" id="solutionContent">
+            <div class="solution-title" id="errorTitle">异常处理方案</div>
+            <div id="errorBody">
+                <!-- JS 填充具体内容 -->
+            </div>
+        </div>
+    </section>
+
+    <!-- 重要业务规则区域 -->
+    <section class="rules-panel">
+        <div class="rules-title">重要业务规则</div>
+        <div class="rules-grid" id="rulesGrid">
+            <!-- 规则卡片将通过JS动态生成 -->
+        </div>
+    </section>
+</div>
+
+<script>
+    // 流程节点定义
+    const flowNodes = [
+        { id: 1, label: '接单' },
+        { id: 2, label: '预开通' },
+        { id: 3, label: 'BOSS派单' },
+        { id: 4, label: '装维，竣工' },
+        { id: 5, label: '汇总数据' },
+        { id: 6, label: '结束流程' }
+    ];
+
+    // 根据文档第四章节更新的处理方案数据
+    const breakScenarios = {
+        1: { // 1-2 断裂
+            title: "节点 1、2 之间异常处理",
+            content: `
+                <div class="solution-group">
+                    <div class="solution-scenario">结束客服单，无需创建BOSS工单</div>
+                    <div class="solution-action">
+                        <strong>处理方式：</strong>直接结束客服工单，不触发后续BOSS流程。<br>
+                        <span class="solution-note">注意：客户从其余途径重新开始记录。</span>
+                    </div>
+                </div>
+            `
+        },
+        2: { // 2-3 断裂
+            title: "节点 2、3 之间异常处理",
+            content: `
+                <div class="solution-group">
+                    <div class="solution-scenario">营业厅销户处理</div>
+                    <div class="solution-action">
+                        <strong>处理方式：</strong>结束工单。<br>
+                        <span class="solution-note">注意：如客户通过其他途径重新下单则重新受理。</span>
+                    </div>
+                </div>
+            `
+        },
+        3: { // 3-4 断裂
+            title: "节点 3、4 之间异常处理",
+            content: `
+                <div class="solution-group">
+                    <div class="solution-scenario">网格员无法上门：退单、改派</div>
+                    <div class="solution-action">
+                        <strong>处理方式：</strong>将工单退回或改派给其他网格员。
+                    </div>
+                </div>
+                <div class="solution-group">
+                    <div class="solution-scenario">客户反悔或跑单</div>
+                    <div class="solution-action">
+                        <strong>处理方式：</strong>营业厅销户处理，结束工单。<br>
+                        <span class="solution-note">注意：如客户通过其他途径下单则重新受理。</span>
+                    </div>
+                </div>
+            `
+        }
+    };
+
+    // 重要业务规则数据
+    const businessRules = [
+        {
+            id: 1,
+            icon: "🔄",
+            summary: "客服派客服单给网格员后客户跳单",
+            details: "被派单的网格员结束工单。客户从其余途径重新开始记录",
+            highlight: "网格员操作"
+        },
+        {
+            id: 2,
+            icon: "⚠️",
+            summary: "已受理状态客户反悔",
+            details: "进行BOSS销户，由网格员或营业厅人员结束工单（考虑到销户操作只有营业厅能做，所以结束工单可选择由谁来操作）",
+            highlight: "销户权限在营业厅"
+        },
+        {
+            id: 3,
+            icon: "✅",
+            summary: "BOSS工单必须回单",
+            details: "所有BOSS工单必须完成回单操作，数据传给客服系统，结束，闭环",
+            highlight: "强制回单"
+        },
+        {
+            id: 4,
+            icon: "📝",
+            summary: "既有客服工单也有BOSS工单",
+            details: "B场景中的网格员接到客服工单后，业务受理时自动创建BOSS工单，工单竣工时，与对应的客服工单关联，可自动结束客服工单或弹窗询问网格员是否同时回复客服工单，尽量减少网格员的回单工作量。",
+            highlight: "自动关联"
+        },
+        {
+            id: 5,
+            icon: "🚫",
+            summary: "无需BOSS操作的工单",
+            details: "如需对协助用户操作，或咨询投诉类服务进行拍照记录，则需要系统支持网格员创建无需BOSS操作的工单类型",
+            highlight: "特殊工单类型"
+        }
+    ];
+
+    // 渲染 SVG 流程图
+    function initDiagram() {
+        const container = document.getElementById('diagramContainer');
+        const width = container.clientWidth;
+        const height = 160;
+        
+        let positions = [];
+        const isMobile = width < 768;
+        
+        // 布局调整坐标 (适应缩小后的尺寸)
+        if (isMobile) {
+            const colWidth = width / 2;
+            const rowHeight = 90;
+            const startX = colWidth / 2;
+            const startY = 60;
+            positions.push({x: startX, y: startY});
+            positions.push({x: startX + colWidth, y: startY});
+            positions.push({x: startX + colWidth, y: startY + rowHeight});
+            positions.push({x: startX, y: startY + rowHeight});
+            positions.push({x: startX, y: startY + rowHeight * 2});
+            positions.push({x: startX + colWidth, y: startY + rowHeight * 2});
+        } else {
+            const gap = width / 7;
+            const startY = 80;
+            for(let i=1; i<=6; i++) {
+                positions.push({x: i * gap, y: startY});
+            }
+        }
+
+        let svgHtml = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+        
+        for (let i = 0; i < positions.length - 1; i++) {
+            const start = positions[i];
+            const end = positions[i+1];
+            const isBreakable = i < 3;
+            
+            svgHtml += `
+                <line id="line-${i+1}" 
+                      x1="${start.x}" y1="${start.y}" 
+                      x2="${end.x}" y2="${end.y}" 
+                      class="connection-line connected" />
+            `;
+
+            if (isBreakable) {
+                const midX = (start.x + end.x) / 2;
+                const midY = (start.y + end.y) / 2;
+                svgHtml += `
+                    <g class="break-point" onclick="triggerBreak(${i+1})">
+                        <circle cx="${midX}" cy="${midY}" r="18" class="bp-bg" />
+                        <circle cx="${midX}" cy="${midY}" r="8" class="bp-icon" />
+                    </g>
+                `;
+            }
+        }
+
+        positions.forEach((pos, index) => {
+            const nodeId = index + 1;
+            svgHtml += `
+                <g class="node-group">
+                    <circle cx="${pos.x}" cy="${pos.y}" r="24" class="node-circle" id="node-${nodeId}" />
+                    <text x="${pos.x}" y="${pos.y}" class="node-text">${nodeId}</text>
+                    <text x="${pos.x}" y="${pos.y + 42}" class="node-label">${flowNodes[index].label}</text>
+                </g>
+            `;
+        });
+
+        svgHtml += `</svg>`;
+        container.innerHTML = svgHtml;
+    }
+
+    // 渲染重要业务规则
+    function initBusinessRules() {
+        const rulesGrid = document.getElementById('rulesGrid');
+        rulesGrid.innerHTML = '';
+        
+        businessRules.forEach(rule => {
+            const ruleCard = document.createElement('div');
+            ruleCard.className = 'rule-card';
+            ruleCard.innerHTML = `
+                <div class="rule-icon">${rule.icon}</div>
+                <div class="rule-summary">${rule.summary}</div>
+                <div class="rule-details">${rule.details}</div>
+                ${rule.highlight ? `<div class="rule-highlight">${rule.highlight}</div>` : ''}
+            `;
+            
+            ruleCard.addEventListener('click', () => {
+                // 切换激活状态
+                ruleCard.classList.toggle('active');
+            });
+            
+            rulesGrid.appendChild(ruleCard);
+        });
+    }
+
+    // 触发断裂逻辑
+    function triggerBreak(breakId) {
+        resetVisuals();
+        
+        // 1. 更新图表视觉
+        const line = document.getElementById(`line-${breakId}`);
+        if (line) {
+            line.classList.remove('connected');
+            line.classList.add('broken');
+        }
+
+        // 将断裂点之后的节点置灰
+        for (let i = breakId + 1; i <= 6; i++) {
+            const node = document.getElementById(`node-${i}`);
+            if (node) {
+                node.style.stroke = '#cbd5e1';
+                node.style.fill = '#f8fafc';
+            }
+        }
+
+        // 2. 更新下方文字方案
+        updateSolutionPanel(breakId);
+    }
+
+    // 更新下方处理方案区域
+    function updateSolutionPanel(id) {
+        const data = breakScenarios[id];
+        if (!data) return;
+
+        const emptyState = document.getElementById('emptyState');
+        const content = document.getElementById('solutionContent');
+        const title = document.getElementById('errorTitle');
+        const body = document.getElementById('errorBody');
+
+        emptyState.style.display = 'none';
+        content.style.display = 'block';
+
+        title.innerText = data.title;
+        body.innerHTML = data.content;
+    }
+
+    function resetVisuals() {
+        document.querySelectorAll('.connection-line').forEach(line => {
+            line.classList.add('connected');
+            line.classList.remove('broken');
+        });
+
+        document.querySelectorAll('.node-circle').forEach(node => {
+            node.style.stroke = ''; 
+            node.style.fill = '';
+        });
+    }
+
+    // 初始化
+    window.addEventListener('resize', initDiagram);
+    document.addEventListener('DOMContentLoaded', () => {
+        initDiagram();
+        initBusinessRules();
+    });
+
+</script>
+
+</body>
+</html>

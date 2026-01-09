@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>服务工单系统融合流程与实施方案</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+    }
+    
+    body {
+        background-color: #f5f9ff;
+        color: #333;
+        padding: 20px;
+        min-height: 100vh;
+    }
+    
+    .header {
+        text-align: center;
+        margin-bottom: 0;
+        padding: 30px 25px 10px;
+        background: #f8fafc; /* 与页面背景同色系 */
+        color: #333;
+        border-radius: 0;
+        border-bottom: 0px solid #e2e8f0;
+    }
+    
+    .header h1::before {
+        content: '📋';
+        font-size: 24px;
+    }
+    
+    .header h1 {
+        font-size: 28px;
+        margin-bottom: 8px;
+        font-weight: 700;
+        color: #1a6dcc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1); /* 添加这行 */
+    }
+    
+    .header p {
+        font-size: 16px;
+        color: #64748b;
+        background: #e8f1ff;
+        padding: 8px 16px;
+        border-radius: 20px;
+        display: inline-block;
+        margin-top: 10px;
+    }
+    
+    /* 标签页样式 - 直角紧凑折叠有签 */
+    .tab-container {
+        display: flex;
+        gap: 0;
+        margin-bottom: 0; /* 去掉下边距 */
+        padding: 0;
+        border-bottom: none; /* 去掉横线 */
+        width: 100%;
+        position: relative;
+        background: #f5f9ff; /* 与body背景一致 */
+        padding: 8px 0 0 0;
+        border-radius: 0; /* 去掉圆角 */
+    }
+    
+    .tab-btn {
+        padding: 10px 24px;
+        border: none;
+        border-radius: 0;
+        background: #e8f1ff; /* 未选中标签 */
+        color: #4a7fc1;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+        white-space: nowrap;
+        position: relative;
+        margin-right: 2px;
+        border: 1px solid #c2d6f0;
+        border-bottom: none;
+        border-top-left-radius: 4px;
+        border-top-right-radius: 4px;
+        margin-top: 0;
+        box-shadow: inset 0 -2px 5px rgba(0, 0, 0, 0.05);
+    }
+    
+    .tab-btn:hover {
+        background: #d4e4ff; /* 修改这里 - 悬停时稍深的蓝色 */
+        color: #2c5aa0; /* 修改这里 - 深蓝色文字 */
+        transform: translateY(-1px);
+        box-shadow: inset 0 -2px 5px rgba(0, 0, 0, 0.05);
+    }
+    
+    .tab-btn.active {
+        background: white; /* 选中标签背景为白色 */
+        color: #1a6dcc;
+        border-color: #1a6dcc;
+        border-bottom-color: white;
+        margin-top: -2px;
+        padding-top: 12px;
+        font-weight: 700;
+        box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.08);
+        z-index: 2;
+        transform: translateY(0);
+    }
+    
+    .tab-btn.active::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: #1a6dcc;
+        border-top-left-radius: 4px;
+        border-top-right-radius: 4px;
+    }
+    
+    .tab-btn.active::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: white;
+    }
+    
+    /* 紧凑折叠效果 */
+    .tab-btn:not(:first-child) {
+        margin-left: -2px;
+    }
+    
+    /* 响应式调整 */
+    @media (max-width: 768px) {
+        .tab-container {
+            padding: 6px 6px 0 6px;
+        }
+        
+        .tab-btn {
+            padding: 8px 16px;
+            font-size: 13px;
+            margin-right: 1px;
+            background: #f0f7ff; /* 移动端也保持一致 */
+            color: #3d8bf7;
+        }
+        
+        .tab-btn.active {
+            padding-top: 10px;
+            margin-top: -2px;
+            background: white;
+            color: #1a6dcc;
+        }
+    }
+    
+    .tab-content {
+        display: none;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+    
+    .main-container {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+    
+    .demo-section {
+        background-color: white;
+        border-radius: 0 0 0px 0px; /* 只保留下边圆角 */
+        padding: 25px 25px 40px; /* 增加下边距，延长容器 */
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        margin-top: 0; /* 去掉上边距 */
+        min-height: 1200px; /* 延长容器高度 */
+    }
+    
+    .section-title {
+        font-size: 20px;
+        color: #1a6dcc;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #eaeaea;
+        display: flex;
+        align-items: center;
+font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
+font-weight: 700; /* 更粗一些 */
+    }
+    
+    .section-title i {
+        margin-right: 12px;
+        font-size: 24px;
+    }
+    
+    /* 场景选择样式 - 改扁一些 */
+    .scenarios-container {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    
+    .scenario-btn {
+        flex: 1;
+        min-width: 200px;
+        padding: 18px 15px;
+        border: none;
+        border-radius: 0px;
+        background: white;
+        color: #333;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        position: relative;
+        overflow: hidden;
+        height: 110px;
+    }
+    
+    .scenario-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
+    }
+    
+    .scenario-btn.active {
+        color: white;
+    }
+    
+    /* ========== 修改点1：场景A颜色改为深天蓝 ========== */
+    .scenario-btn.scenario-a.active {
+        background: linear-gradient(135deg, #2c82c9 0%, #2173b9 100%);
+        box-shadow: 0 6px 12px rgba(44, 130, 201, 0.3);
+    }
+    
+    /* ========== 修改点2：场景B颜色改为森林绿 ========== */
+    .scenario-btn.scenario-b.active {
+        background: linear-gradient(135deg, #27ae60 0%, #219653 100%);
+        box-shadow: 0 6px 12px rgba(39, 174, 96, 0.3);
+    }
+    
+    /* ========== 修改点3：场景C颜色改为柔和橙 ========== */
+    .scenario-btn.scenario-c.active {
+        background: linear-gradient(135deg, #f39c12 0%, #d68910 100%);
+        box-shadow: 0 6px 12px rgba(243, 156, 18, 0.3);
+    }
+    
+    .scenario-icon {
+        font-size: 28px;
+        margin-bottom: 0;
+        transition: all 0.3s ease;
+    }
+    
+    .scenario-btn.active .scenario-icon {
+        transform: scale(1.1);
+    }
+    
+    .scenario-desc {
+        font-size: 12px;
+        font-weight: normal;
+        opacity: 0.8;
+        text-align: center;
+        line-height: 1.3;
+    }
+    
+    /* 流程时间线 */
+    .process-container {
+        position: relative;
+        min-height: 400px;
+        margin-top: 3px;
+    }
+    
+    .process-flow {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        position: relative;
+        padding: 0px 20px;
+        min-height: 300px;
+        overflow-x: auto;
+    }
+    
+    .step-connector {
+        position: absolute;
+        top: 30px;
+        left: 115px;
+        right: 115px;
+        height: 4px;
+        background: linear-gradient(to right, #e0e0e0, #1a6dcc, #e0e0e0);
+        z-index: 1;
+        transition: all 0.5s ease;
+    }
+    
+    .step-connector.active {
+        background: linear-gradient(to right, #27ae60, #1a6dcc, #27ae60);
+    }
+    
+    .process-step {
+        flex: 0 0 140px;
+        text-align: center;
+        position: relative;
+        z-index: 2;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        padding: 10px;
+        border-radius: 10px;
+    }
+    
+    .process-step:hover:not(.step-skipped):not(.step-active) {
+        background-color: #f8f9fa;
+        transform: translateY(-5px);
+    }
+    
+    .step-skipped {
+        opacity: 0.4;
+        filter: grayscale(0.7);
+        cursor: default;
+    }
+    
+    .step-disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+    
+    .step-icon {
+        width: 50px;
+        height: 50px;
+        background: white;
+        border-radius: 50%;
+        margin: 0 auto 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        font-weight: bold;
+        color: #1a6dcc;
+        border: 3px solid #e0e0e0;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transition: all 0.5s ease;
+        position: relative;
+        z-index: 3;
+    }
+    
+    .step-skipped .step-icon {
+        background-color: #f5f5f5;
+        color: #999;
+        border-color: #ddd;
+    }
+    
+    .step-disabled .step-icon {
+        background-color: #f5f5f5;
+        color: #999;
+        border-color: #ddd;
+    }
+    
+    .step-active .step-icon {
+        background-color: #1a6dcc;
+        color: white;
+        border-color: #1a6dcc;
+        transform: scale(1.15);
+        box-shadow: 0 8px 16px rgba(26, 109, 204, 0.4);
+        animation: pulse 1.5s infinite;
+    }
+    
+    .step-completed .step-icon {
+        background-color: #27ae60;
+        color: white;
+        border-color: #27ae60;
+        transform: scale(1.05);
+    }
+    
+    /* 节点标签文字颜色 - 新增场景相关样式 */
+    .step-label {
+        font-size: 14px;
+        font-weight: bold;
+        color: #666; /* 默认颜色 */
+        margin-bottom: 5px;
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.3s ease; /* 添加颜色过渡效果 */
+    }
+    
+    /* ========== 修改点4：根据不同场景设置节点文字颜色 ========== */
+    .scenario-a .step-label {
+        color: #2c82c9; /* A场景深天蓝 */
+    }
+    
+    .scenario-b .step-label {
+        color: #27ae60; /* B场景森林绿 */
+    }
+    
+    .scenario-c .step-label {
+        color: #f39c12; /* C场景柔和橙 */
+    }
+    
+    /* 选中节点的文字颜色 */
+    .scenario-a .step-active .step-label {
+        color: #1c5f9b; /* A场景选中时更深色 */
+    }
+    
+    .scenario-b .step-active .step-label {
+        color: #1e7d48; /* B场景选中时更深色 */
+    }
+    
+    .scenario-c .step-active .step-label {
+        color: #b07d0e; /* C场景选中时更深色 */
+    }
+    
+    /* 节点图标边框颜色也随场景变化 */
+    .scenario-a .step-icon {
+        border-color: #2c82c9;
+        color: #2c82c9;
+    }
+    
+    .scenario-b .step-icon {
+        border-color: #27ae60;
+        color: #27ae60;
+    }
+    
+    .scenario-c .step-icon {
+        border-color: #f39c12;
+        color: #f39c12;
+    }
+    
+    /* 选中节点图标样式 */
+    .scenario-a .step-active .step-icon {
+        background-color: #2c82c9;
+        color: white;
+        border-color: #2c82c9;
+        box-shadow: 0 8px 16px rgba(44, 130, 201, 0.4);
+        animation: pulse-a 1.5s infinite;
+    }
+    
+    .scenario-b .step-active .step-icon {
+        background-color: #27ae60;
+        color: white;
+        border-color: #27ae60;
+        box-shadow: 0 8px 16px rgba(39, 174, 96, 0.4);
+        animation: pulse-b 1.5s infinite;
+    }
+    
+    .scenario-c .step-active .step-icon {
+        background-color: #f39c12;
+        color: white;
+        border-color: #f39c12;
+        box-shadow: 0 8px 16px rgba(243, 156, 18, 0.4);
+        animation: pulse-c 1.5s infinite;
+    }
+    
+    /* 流程线颜色 */
+    .scenario-a .step-connector {
+        background: linear-gradient(to right, #2c82c9, #2173b9, #2c82c9) !important;
+    }
+    
+    .scenario-b .step-connector {
+        background: linear-gradient(to right, #27ae60, #219653, #27ae60) !important;
+    }
+    
+    .scenario-c .step-connector {
+        background: linear-gradient(to right, #f39c12, #d68910, #f39c12) !important;
+    }
+    
+    /* 已完成节点样式 */
+    .scenario-a .step-completed .step-icon {
+        background-color: #2c82c9;
+        border-color: #2c82c9;
+        color: white;
+    }
+    
+    .scenario-b .step-completed .step-icon {
+        background-color: #27ae60;
+        border-color: #27ae60;
+        color: white;
+    }
+    
+    .scenario-c .step-completed .step-icon {
+        background-color: #f39c12;
+        border-color: #f39c12;
+        color: white;
+    }
+    
+    /* 隐藏时间显示 */
+    .step-time {
+        display: none;
+    }
+    
+    /* 翻转卡片容器 - 进一步上提位置 */
+    .flip-card-container {
+        position: absolute;
+        width: 340px;
+        height: 520px;
+        perspective: 1000px;
+        top: 50px; /* 进一步上提，贴近节点文字 */
+        left: 0%;
+        z-index: 100;
+        transition: all 0.8s ease;
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    
+    .flip-card-container.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    .flip-card {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        transform-style: preserve-3d;
+        transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        cursor: pointer;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+    
+    .flip-card.flipped {
+        transform: rotateY(180deg);
+    }
+    
+    /* 正面和背面共用样式 */
+    .flip-card-front, .flip-card-back {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        backface-visibility: hidden;
+        border-radius: 12px;
+        background: white;
+        border: 1px solid #e0e0e0;
+        overflow: hidden;
+    }
+    
+    /* 正面样式 - 工单详情 */
+    .flip-card-front {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* 背面样式 - 图片和文字 */
+    .flip-card-back {
+        transform: rotateY(180deg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        text-align: center;
+    }
+    
+    /* 背面图片容器 */
+    .back-image-container {
+        width: 100%;
+        height: 320px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #eaeaea;
+    }
+    
+    .back-image {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    
+    /* 背面文字描述 */
+    .back-description {
+        font-size: 14px;
+        color: #666;
+        line-height: 1.5;
+        padding: 0 15px;
+    }
+    
+    /* 工单正面内容样式 */
+    .order-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        padding: 12px 15px 10px;
+        border-bottom: 2px solid #eee;
+    }
+    
+    .order-title {
+        font-weight: bold;
+        font-size: 18px;
+        color: #1a6dcc;
+    }
+    
+    .order-scenario {
+        padding: 4px 12px;
+        border-radius: 15px;
+        font-size: 12px;
+        font-weight: bold;
+        color: white;
+    }
+    
+    /* ========== 修改点5：工单场景标签颜色 ========== */
+    .scenario-a .order-scenario {
+        background-color: #2c82c9;
+    }
+    
+    .scenario-b .order-scenario {
+        background-color: #27ae60;
+    }
+    
+    .scenario-c .order-scenario {
+        background: linear-gradient(135deg, #f39c12, #d68910);
+    }
+    
+    /* 时间信息放在上面 - 减小间距 */
+    .order-timestamps {
+        margin-bottom: 10px;
+        padding: 0 15px 10px;
+        border-bottom: 2px solid #eee;
+        flex-shrink: 0; /* 防止时间区域被压缩 */
+    }
+    
+    .timestamp {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 4px;
+        font-size: 13px;
+        padding: 2px 0;
+    }
+    
+    .timestamp:last-child {
+        margin-bottom: 0;
+    }
+    
+    .timestamp-label {
+        color: #666;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    
+    .timestamp-value {
+        color: #333;
+        font-weight: 600;
+        text-align: right;
+        max-width: 180px;
+        word-break: break-word;
+    }
+    
+    .timestamp-value.empty {
+        color: #999;
+        font-style: italic;
+        font-weight: normal;
+    }
+    
+    /* 高亮更新内容 - 保持高亮直到切换节点 */
+    .timestamp-value.updated {
+        color: #e74c3c;
+        font-weight: 700;
+        background-color: #fff3f3;
+        padding: 1px 4px;
+        border-radius: 3px;
+        border-left: 2px solid #e74c3c;
+    }
+    
+    /* 客户信息放在下面 - 项目名和内容同行显示，更紧凑 */
+    .order-details {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1px;
+        padding: 8px 15px;
+        flex: 1;
+        overflow-y: auto;
+    }
+    
+    .detail-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1px;
+        min-height: 30px;
+    }
+    
+    .detail-label {
+        font-size: 12px;
+        color: #888;
+        font-weight: 500;
+        min-width: 50px; /* 标签最小宽度 */
+        margin-right: 2px; /* 右边距 */
+        flex-shrink: 0;
+    }
+    
+    .detail-value {
+        font-size: 13px;
+        font-weight: 600;
+        color: #333;
+        padding: 4px 6px; /* 减小内边距 */
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        border-left: 2px solid #1a6dcc;
+        min-height: 26px;
+    }
+    
+    .detail-value.empty {
+        color: #999;
+        font-style: italic;
+        font-weight: normal;
+        border-left-color: #ddd;
+    }
+    
+    .detail-value.updated {
+        color: #e74c3c;
+        font-weight: 700;
+        background-color: #fff3f3;
+        border-left-color: #e74c3c;
+    }
+    
+    /* 底部客户图片容器 - 在客户信息下面，始终显示 */
+    .customer-image-container {
+        padding: 10px 15px 12px;
+        border-top: 1px solid #eee;
+        background-color: #fafbfc;
+        flex-shrink: 0; /* 防止图片区域被压缩 */
+    }
+    
+    .customer-image-label {
+        font-size: 12px;
+        color: #888;
+        margin-bottom: 6px;
+        font-weight: 500;
+    }
+    
+    .customer-image-box {
+        width: 100%;
+        height: 100px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f8f9fa;
+        border-radius: 6px;
+        overflow: hidden;
+        border: 1px solid #eaeaea;
+    }
+    
+    .customer-image {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    
+    /* 占位符文本 */
+    .placeholder-text {
+        color: #999;
+        font-style: italic;
+        font-size: 13px;
+    }
+    
+    /* 节点脉冲动画 */
+    @keyframes pulse {
+        0% { transform: scale(1); box-shadow: 0 6px 12px rgba(26, 109, 204, 0.3); }
+        50% { transform: scale(1.15); box-shadow: 0 10px 20px rgba(26, 109, 204, 0.5); }
+        100% { transform: scale(1); box-shadow: 0 6px 12px rgba(26, 109, 204, 0.3); }
+    }
+    
+    /* 场景特定的脉冲动画 */
+    @keyframes pulse-a {
+        0% { transform: scale(1); box-shadow: 0 6px 12px rgba(44, 130, 201, 0.3); }
+        50% { transform: scale(1.15); box-shadow: 0 10px 20px rgba(44, 130, 201, 0.5); }
+        100% { transform: scale(1); box-shadow: 0 6px 12px rgba(44, 130, 201, 0.3); }
+    }
+    
+    @keyframes pulse-b {
+        0% { transform: scale(1); box-shadow: 0 6px 12px rgba(39, 174, 96, 0.3); }
+        50% { transform: scale(1.15); box-shadow: 0 10px 20px rgba(39, 174, 96, 0.5); }
+        100% { transform: scale(1); box-shadow: 0 6px 12px rgba(39, 174, 96, 0.3); }
+    }
+    
+    @keyframes pulse-c {
+        0% { transform: scale(1); box-shadow: 0 6px 12px rgba(243, 156, 18, 0.3); }
+        50% { transform: scale(1.15); box-shadow: 0 10px 20px rgba(243, 156, 18, 0.5); }
+        100% { transform: scale(1); box-shadow: 0 6px 12px rgba(243, 156, 18, 0.3); }
+    }
+    
+    /* 说明区域 */
+    .instructions {
+        background-color: #f8f9fa;
+        border-left: 4px solid #1a6dcc;
+        padding: 15px;
+        margin: 25px 0;
+        border-radius: 4px;
+        font-size: 14px;
+        color: #555;
+    }
+    
+    .instructions h3 {
+        color: #2c3e50;
+        margin-bottom: 8px;
+    }
+    
+    /* 文字说明样式 */
+    .explanation-container {
+        padding: 25px;
+        background-color: white;
+        border-radius: 0px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        line-height: 1.6;
+    }
+    
+    .explanation-title {
+        font-size: 22px;
+        color: #1a6dcc;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    
+    .explanation-content {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .explanation-section {
+        margin-bottom: 25px;
+    }
+    
+    .explanation-section h3 {
+        color: #2c3e50;
+        margin-bottom: 10px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .explanation-section ul {
+        padding-left: 20px;
+        margin-bottom: 10px;
+    }
+    
+    .explanation-section li {
+        margin-bottom: 8px;
+    }
+    
+    /* 响应式调整 */
+    @media (max-width: 1200px) {
+        .process-step {
+            flex: 0 0 120px;
+        }
+        
+        .step-connector {
+            left: 95px;
+            right: 95px;
+        }
+        
+        .flip-card-container {
+            width: 300px;
+            height: 480px;
+        }
+    }
+    
+    @media (max-width: 992px) {
+        .scenarios-container {
+            flex-direction: column;
+        }
+        
+        .scenario-btn {
+            min-width: 100%;
+        }
+        
+        .tab-container {
+            flex-direction: column;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .process-step {
+            flex: 0 0 100px;
+        }
+        
+        .step-icon {
+            width: 45px;
+            height: 45px;
+            font-size: 20px;
+        }
+        
+        .step-connector {
+            left: 75px;
+            right: 75px;
+            top: 25px;
+        }
+        
+        .step-label {
+            font-size: 12px;
+        }
+        
+        .flip-card-container {
+            width: 260px;
+            height: 440px;
+            left: 0%;
+            top: 80px;
+        }
+        
+        .order-details {
+            grid-template-columns: 1fr;
+            gap: 6px;
+        }
+        
+        .back-image-container {
+            height: 250px;
+        }
+        
+        .scenario-btn {
+            height: 100px;
+            padding: 15px;
+        }
+        
+        .customer-image-box {
+            height: 80px;
+        }
+        
+        .detail-item {
+            margin-bottom: 4px;
+        }
+        
+        .detail-label {
+            min-width: 55px; /* 移动端进一步缩小 */
+            font-size: 11px;
+        }
+        
+        .detail-value {
+            font-size: 12px;
+            padding: 3px 5px; /* 移动端减小内边距 */
+        }
+        
+        .tab-btn {
+            padding: 10px 15px;
+            font-size: 14px;
+        }
+    }
+</style>
+</head>
+<body>
+    <div class="header">
+        <h1>服务工单系统融合流程与实施方案</h1>
+       
+    </div>
+    
+    <div class="tab-container">
+        <button class="tab-btn active" id="tabExplanation">文字版</button>      
+        <button class="tab-btn" id="tabDemo">流程演示</button>
+        <button class="tab-btn" id="tabException">流程中断</button>
+        
+    </div>
+    
+    <div class="main-container">
+        <!-- 流程演示标签页 -->
+        <div class="tab-content" id="contentDemo">
+            <div class="demo-section">
+                <div class="section-title">
+                    <i class="fas fa-road"></i> 选择服务场景
+                </div>
+                
+                
+                
+                <div class="scenarios-container">
+                    <button class="scenario-btn scenario-a" id="scenarioA">
+                        <div class="scenario-icon">
+                            <i class="fas fa-store"></i>
+                        </div>
+                        <div>A场景：营业厅办理</div>
+                        <div class="scenario-desc">用户到营业厅，网格员不进行BOSS业务操作</div>
+                    </button>
+                    
+                    <button class="scenario-btn scenario-b" id="scenarioB">
+                        <div class="scenario-icon">
+                            <i class="fas fa-phone-alt"></i>
+                        </div>
+                        <div>B场景：客服电话接单</div>
+                        <div class="scenario-desc">客服电话接单并派单给网格员</div>
+                    </button>
+                    
+                    <button class="scenario-btn scenario-c" id="scenarioC">
+                        <div class="scenario-icon">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                        <div>C场景：网格员全流程</div>
+                        <div class="scenario-desc">网格员自己联系的客户并进行全流程操作</div>
+                    </button>
+                </div>
+                
+                <div class="process-container">
+                    <div class="process-flow">
+                       <div class="step-connector" id="processConnector"></div>
+                        
+                        <!-- 步骤1：接单 -->
+                        <div class="process-step step-disabled" id="step1" data-step="1">
+                            <div class="step-icon">
+                                1
+                            </div>
+                            <div class="step-label">1. 接单</div>
+                            <div class="step-time" id="step1Time">--:--:--</div>
+                        </div>
+                        
+                        <!-- 步骤2：预开通 -->
+                        <div class="process-step step-disabled" id="step2" data-step="2">
+                            <div class="step-icon">
+                                2
+                            </div>
+                            <div class="step-label">2. 预开通</div>
+                            <div class="step-time" id="step2Time">--:--:--</div>
+                        </div>
+                        
+                        <!-- 步骤3：BOSS派单 -->
+                        <div class="process-step step-disabled" id="step3" data-step="3">
+                            <div class="step-icon">
+                                3
+                            </div>
+                            <div class="step-label">3. BOSS派单</div>
+                            <div class="step-time" id="step3Time">--:--:--</div>
+                        </div>
+                        
+                        <!-- 步骤4：装维，竣工 -->
+                        <div class="process-step step-disabled" id="step4" data-step="4">
+                            <div class="step-icon">
+                                4
+                            </div>
+                            <div class="step-label">4. 装维，竣工</div>
+                            <div class="step-time" id="step4Time">--:--:--</div>
+                        </div>
+                        
+                        <!-- 步骤5：汇总数据 -->
+                        <div class="process-step step-disabled" id="step5" data-step="5">
+                            <div class="step-icon">
+                                5
+                            </div>
+                            <div class="step-label">5. 汇总数据</div>
+                            <div class="step-time" id="step5Time">--:--:--</div>
+                        </div>
+                        
+                        <!-- 步骤6：结束流程 -->
+                        <div class="process-step step-disabled" id="step6" data-step="6">
+                            <div class="step-icon">
+                                6
+                            </div>
+                            <div class="step-label">6. 结束流程</div>
+                            <div class="step-time" id="step6Time">--:--:--</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 翻转卡片容器 -->
+                    <div class="flip-card-container" id="flipCardContainer">
+                        <div class="flip-card" id="flipCard">
+                            <!-- 正面：工单详情 -->
+                            <div class="flip-card-front">
+                                <div class="order-header">
+                                    <div class="order-title">工单详情</div>
+                                    <div class="order-scenario" id="orderScenarioTag">场景A</div>
+                                </div>
+                                
+                                <!-- 时间信息放在上面 -->
+                                <div class="order-timestamps">
+                                    <div class="timestamp">
+                                        <span class="timestamp-label">接单时间:</span>
+                                        <span class="timestamp-value empty" id="orderAcceptTime">未记录</span>
+                                    </div>
+                                    <div class="timestamp">
+                                        <span class="timestamp-label">预开通时间:</span>
+                                        <span class="timestamp-value empty" id="orderFirstProcessTime">未记录</span>
+                                    </div>
+                                    <div class="timestamp">
+                                        <span class="timestamp-label">BOSS产品:</span>
+                                        <span class="timestamp-value empty" id="orderBossProduct">未记录</span>
+                                    </div>
+                                    <div class="timestamp">
+                                        <span class="timestamp-label">BOSS派单时间:</span>
+                                        <span class="timestamp-value empty" id="orderBossAssignTime">未记录</span>
+                                    </div>
+                                    <div class="timestamp">
+                                        <span class="timestamp-label">上门时间:</span>
+                                        <span class="timestamp-value empty" id="orderVisitTime">未记录</span>
+                                    </div>
+                                    <div class="timestamp">
+                                        <span class="timestamp-label">上门时长:</span>
+                                        <span class="timestamp-value empty" id="orderVisitDuration">未记录</span>
+                                    </div>
+                                    <div class="timestamp">
+                                        <span class="timestamp-label">竣工时间:</span>
+                                        <span class="timestamp-value empty" id="orderCompletionTime">未记录</span>
+                                    </div>
+                                    <div class="timestamp">
+                                        <span class="timestamp-label">回访时间:</span>
+                                        <span class="timestamp-value empty" id="orderFollowupTime">未记录</span>
+                                    </div>
+                                    <div class="timestamp">
+                                        <span class="timestamp-label">回访满意度:</span>
+                                        <span class="timestamp-value empty" id="orderSatisfaction">未回访</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- 客户信息放在下面 - 项目名和内容同行显示 -->
+                                <div class="order-details">
+                                    <div class="detail-item">
+                                        <div class="detail-label">客户编码</div>
+                                        <div class="detail-value empty" id="orderCustomerCode">未填写</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">客户姓名</div>
+                                        <div class="detail-value empty" id="orderCustomerName">未填写</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">地址编码</div>
+                                        <div class="detail-value empty" id="orderAddressCode">未填写</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">业务类型</div>
+                                        <div class="detail-value empty" id="orderBusinessType">未填写</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">操作员工号</div>
+                                        <div class="detail-value empty" id="orderOperatorId">未填写</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">操作员姓名</div>
+                                        <div class="detail-value empty" id="orderOperatorName">未填写</div>
+                                    </div>
+                                </div>
+                                
+                        <!-- 底部客户图片容器 - 在客户信息下面，始终显示 -->
+                                <div class="customer-image-container" id="customerImageContainer">
+                                    <div class="customer-image-label">现场照片</div>
+                                    <div class="customer-image-box" id="customerImageBox">
+                                        <!-- 图片将通过JavaScript动态设置 -->
+                                        <span class="placeholder-text" id="customerImagePlaceholder">暂未上传</span>
+                                        <img src="" alt="客户信息确认" class="customer-image" id="customerImage" style="display: none;">
+                                    </div>
+                                </div>
+                            </div>        
+                            
+                            <!-- 背面：图片和文字 -->
+                            <div class="flip-card-back">
+                                <div class="back-image-container">
+                                    <img id="backImage" class="back-image" alt="节点详情图片">
+                                </div>
+                                <div class="back-description" id="backDescription">
+                                    点击卡片返回工单详情
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 异常状态标签页 -->
+        <div class="tab-content" id="contentException">
+            <!-- 异常页面将通过iframe加载 -->
+            <div style="width:100%; height:1200px;">
+             <iframe id="exceptionIframe" src="" style="width:100%; height:100%; border:none;"></iframe>
+               </div>
+           </div>
+                        
+                   
+        
+        <!-- 文字说明标签页 -->
+<div class="tab-content active" id="contentExplanation">
+    <!-- 文字说明页面将通过iframe加载 -->
+    <div style="width:100%; height:1200px;">
+        <iframe id="explanationIframe" src="pic/服务工单流程说明文档.html" style="width:100%; height:100%; border:none;"></iframe>
+    </div>
+</div>
+
+        <script>
+    // 当前状态
+    let currentScenario = null;
+    let currentStep = 0;
+    let currentHighlightedFields = {}; // 当前高亮显示的字段
+    let isFlipped = false; // 卡片是否翻转
+    let step1Position = null; // 存储节点1的位置
+    
+    // 场景数据
+    const scenarioData = {
+        'A': {
+            name: '营业厅业务',
+            steps: [2, 3, 4, 5, 6], // 可用的步骤（跳过步骤1）
+            skippedSteps: [1],
+            color: '#3498db',
+            icon: 'fa-store'
+        },
+        'B': {
+            name: '客服电话业务',
+            steps: [1, 2, 3, 4, 5, 6], // 所有步骤都可用
+            skippedSteps: [],
+            color: '#2ecc71',
+            icon: 'fa-phone-alt'
+        },
+        'C': {
+            name: '网格员自联业务',
+            steps: [2, 3, 4, 5, 6], // 可用的步骤（跳过步骤1）
+            skippedSteps: [1],
+            color: '#ff8c00', // 
+            icon: 'fa-user-tie'
+        }
+    };
+    
+    // 工单数据 - 不同场景不同节点的数据变化
+    const orderDataTemplates = {
+        // A场景数据
+        'A': {
+            1: {}, // 步骤1为空
+            2: {
+                customerCode: '20231128001',
+                customerName: '张三',
+                addressCode: '00101002',
+                businessType: '开户安装',
+                operatorId: '501002zd',
+                operatorName: '李四',
+                acceptTime: '2025-12-1 9:40',
+                firstProcessTime: '2025-12-1 9:40',
+                bossProduct: '未激活',
+                stepDescription: '营业员在营业厅初步处理客户需求，收费，在BOSS中录入产品，产品状态为未激活。'
+            },
+            3: {
+                bossAssignTime: '2025-12-1 10:00',
+                stepDescription: '营业员通过BOSS系统派发BOSS工单给网格员'
+            },
+            4: {
+                visitTime: '2025-12-1 14:00',
+                visitDuration: '1小时11分钟',
+                completionTime: '2025-12-1 15:50',
+                bossProduct: '已激活',
+                stepDescription: '网格员上门服务、拍照记录、BOSS回单（自动触发预开通的受理单竣工）。',
+                showCustomerImage: true // 标记显示客户图片
+            },
+            5: {
+                stepDescription: '在此之前以最优方案完成数据关联及同步汇总至客服系统。',
+                showCustomerImage: true // 节点5继续显示图片
+            },
+            6: {
+                followupTime: '2025-12-3 11:41',
+                satisfaction: '满意',
+                stepDescription: '客服进行回访，记录满意度，服务流程闭环（可批量）',
+                showCustomerImage: true // 节点6继续显示图片
+            }
+        },
+        
+        // B场景数据 - 修复：上门时间在步骤2已经设置，步骤4不再标记为新增
+        'B': {
+            1: {
+                acceptTime: '2025-12-1 8:50', // 改为8:50
+                stepDescription: '客服通过客服系统派客服单给网格员'
+            },
+            2: {
+                customerCode: '20231128001',
+                customerName: '张三',
+                addressCode: '00101002',
+                businessType: '开户安装',
+                operatorId: '501002zd',
+                operatorName: '李四',
+                acceptTime: '2025-12-1 8:50', // 节点2显示接单时间，但不高亮
+                firstProcessTime: '2025-12-1 10:10',
+                bossAssignTime: '',
+                bossProduct: '未激活',
+                visitTime: '2025-12-1 10:00',
+                stepDescription: '网格员通过智慧宝初步处理客户需求，收费，录入产品，产品状态为未激活。'
+            },
+            3: {
+                bossAssignTime: '2025-12-1 10:20',
+                stepDescription: '网格员通过智慧宝派BOSS单给自己'
+            },
+            4: {
+                visitDuration: '1小时11分钟',
+                completionTime: '2025-12-1 11:40',
+                bossProduct: '已激活',
+                stepDescription: '网格员上门服务、拍照记录、BOSS回单（自动触发预开通的受理单竣工）。',
+                showCustomerImage: true // 标记显示客户图片
+            },
+            5: {
+                stepDescription: '在此之前以最优方案完成数据关联及同步汇总至客服系统。',
+                showCustomerImage: true // 节点5继续显示图片
+            },
+            6: {
+                followupTime: '2025-12-3 11:41',
+                satisfaction: '满意',
+                stepDescription: '客服进行回访，记录满意度，服务流程闭环（可批量）',
+                showCustomerImage: true // 节点6继续显示图片
+            }
+        },
+        
+        // C场景数据 - 修复：上门时间在步骤2已经设置，步骤4不再标记为新增
+        'C': {
+            1: {}, // 步骤1为空
+            2: {
+                customerCode: '20231128001',
+                customerName: '张三',
+                addressCode: '00101002',
+                businessType: '开户安装',
+                operatorId: '501002zd',
+                operatorName: '李四',
+                acceptTime: '2025-12-1 9:40',
+                firstProcessTime: '2025-12-1 10:10',
+                bossAssignTime: '',
+                bossProduct: '未激活',
+                visitTime: '2025-12-1 10:00',
+                stepDescription: '网格员通过智慧宝初步处理客户需求，收费，录入产品，产品状态为未激活。'
+            },
+            3: {
+                bossAssignTime: '2025-12-1 10:20',
+                stepDescription: '网格员通过智慧宝派BOSS单给自己'
+            },
+            4: {
+                visitDuration: '1小时11分钟',
+                completionTime: '2025-12-1 11:40',
+                bossProduct: '已激活',
+                stepDescription: '网格员上门服务、拍照记录、BOSS回单（自动触发预开通的受理单竣工）',
+                showCustomerImage: true // 标记显示客户图片
+            },
+            5: {
+                stepDescription: '在此之前以最优方案完成数据关联及同步汇总至客服系统。',
+                showCustomerImage: true // 节点5继续显示图片
+            },
+            6: {
+                followupTime: '2025-12-3 11:41',
+                satisfaction: '满意',
+                stepDescription: '客服进行回访，记录满意度，服务流程闭环（可批量）',
+                showCustomerImage: true // 节点6继续显示图片
+            }
+        }
+    };
+    
+    // 反面图片配置
+    const backImageConfig = {
+        'A': {
+            1: { image: '', description: '无图片' },
+            2: { image: 'pic/A2.jpg', description: 'A场景节点2：营业员初步处理客户需求，收费，在BOSS中录入产品，产品状态为未激活。' },
+            3: { image: 'pic/A3.jpg', description: 'A场景节点3：营业员通过BOSS系统派BOSS工单给网格员' },
+            4: { image: 'pic/ABC4.jpg', description: '节点4：网格员上门服务、拍照记录、BOSS回单（自动触发预开通的受理单竣工）' },
+            5: { image: 'pic/ABC5.jpg', description: '节点5：在此之前以最优方案完成数据关联及同步至客服系统。' },
+            6: { image: 'pic/ABC6.jpg', description: '节点6：客服进行回访，记录满意度，服务流程闭环' }
+        },
+        'B': {
+            1: { image: 'pic/B1.jpg', description: 'B场景节点1：客服通过电话接收客户服务请求，创建客服工单并派发给相关执行人员。' },
+            2: { image: 'pic/BC2.jpg', description: 'BC场景节点2：网格员通过智慧宝初步处理客户需求，收费，在BOSS中录入产品，产品状态为未激活。' },
+            3: { image: 'pic/BC3.jpg', description: 'BC场景节点3：网格员通过智慧宝派BOSS单给自己' },
+            4: { image: 'pic/ABC4.jpg', description: '节点4：网格员上门服务、拍照记录、BOSS回单（自动触发预开通的受理单竣工）对于客服工单，可自动关联结束或增加弹窗提示：“检测到存在未关闭的客服工单[单号]，是否一并结束？' },
+            5: { image: 'pic/ABC5.jpg', description: '节点5：在此之前以最优方案完成数据关联及同步至客服系统。' },
+            6: { image: 'pic/ABC6.jpg', description: '节点6：客服进行回访，记录满意度，服务流程闭环' }
+        },
+        'C': {
+            1: { image: '', description: '无图片' },
+            2: { image: 'pic/BC2.jpg', description: 'BC场景节点2：网格员通过智慧宝初步处理客户需求，收费，在BOSS中录入产品，产品状态为未激活。' },
+            3: { image: 'pic/BC3.jpg', description: 'BC场景节点3：网格员通过智慧宝派BOSS单给自己' },
+            4: { image: 'pic/ABC4.jpg', description: '节点4：网格员上门服务、拍照记录、BOSS回单（自动触发预开通的受理单竣工）' },
+            5: { image: 'pic/ABC5.jpg', description: '节点5：在此之前以最优方案完成数据关联及同步至客服系统。' },
+            6: { image: 'pic/ABC6.jpg', description: '节点6：客服进行回访，记录满意度，服务流程闭环' }
+        }
+    };
+    
+    // 初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        initEventListeners();
+        // 获取节点1的位置
+        calculateStep1Position();
+        // 默认选择A场景
+        selectScenario('A');
+    });
+    
+    // 初始化事件监听器
+    function initEventListeners() {
+        // 标签页切换
+        document.getElementById('tabDemo').addEventListener('click', () => switchTab('Demo'));
+        document.getElementById('tabException').addEventListener('click', () => switchTab('Exception'));
+        document.getElementById('tabExplanation').addEventListener('click', () => switchTab('Explanation'));
+        
+        // 场景选择
+        document.getElementById('scenarioA').addEventListener('click', () => selectScenario('A'));
+        document.getElementById('scenarioB').addEventListener('click', () => selectScenario('B'));
+        document.getElementById('scenarioC').addEventListener('click', () => selectScenario('C'));
+        
+        // 流程步骤点击
+        for (let i = 1; i <= 6; i++) {
+            document.getElementById(`step${i}`).addEventListener('click', () => clickStep(i));
+        }
+        
+        // 卡片翻转点击
+        document.getElementById('flipCard').addEventListener('click', flipCard);
+    }
+    
+    // 切换标签页
+    function switchTab(tabName) {
+        // 更新标签按钮状态
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.getElementById(`tab${tabName}`).classList.add('active');
+        
+        // 更新标签内容显示
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById(`content${tabName}`).classList.add('active');
+        
+        // 根据标签页加载相应内容
+        if (tabName === 'Explanation') {
+            // 加载服务工单流程说明文档.html到文字说明标签页
+            const iframe = document.getElementById('explanationIframe');
+            iframe.src = 'pic/服务工单流程说明文档.html';
+        } else if (tabName === 'Exception') {
+            // 加载2.html到异常标签页
+            const iframe = document.getElementById('exceptionIframe');
+            iframe.src = 'pic/2.html';
+        } else if (tabName === 'Demo') {
+            // 演示版标签页已有内容，无需额外加载
+        }
+    }
+    
+    // 计算节点1的位置
+    function calculateStep1Position() {
+        const stepElement = document.getElementById('step1');
+        const container = document.querySelector('.process-container');
+        const flipContainer = document.getElementById('flipCardContainer');
+        
+        const stepRect = stepElement.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const cardWidth = flipContainer.offsetWidth || 340; // 默认宽度
+        
+        // 计算卡片位置，使节点圆圈在卡片垂直中线
+        let cardLeft = stepRect.left - containerRect.left - (cardWidth / 2) + (stepRect.width / 2);
+        
+        // 边界检查：确保卡片不超出容器右侧边界
+        const maxLeft = containerRect.width - cardWidth;
+        cardLeft = Math.min(cardLeft, maxLeft);
+        
+        // 边界检查：确保卡片不超出容器左侧边界
+        cardLeft = Math.max(0, cardLeft);
+        
+        // 卡片在节点正下方，距离节点底部1px
+        const cardTop = stepRect.bottom - containerRect.top + 1;
+        
+        step1Position = {
+            left: cardLeft,
+            top: Math.max(100, cardTop)
+        };
+    }
+    
+    // 选择场景
+    function selectScenario(scenario) {
+        currentScenario = scenario;
+        currentStep = 0;
+        currentHighlightedFields = {};
+        isFlipped = false; // 重置翻转状态
+        
+        // 更新场景按钮状态
+        document.querySelectorAll('.scenario-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.getElementById(`scenario${scenario}`).classList.add('active');
+        
+        // 更新流程线颜色
+        const processConnector = document.getElementById('processConnector');
+        const scenarioColors = {
+            'A': 'linear-gradient(to right, #3498db, #2980b9, #3498db)',
+            'B': 'linear-gradient(to right, #2ecc71, #27ae60, #2ecc71)',
+            'C': 'linear-gradient(to right, #ffb347, #d4ac0d, #ffb347)'
+        };
+        processConnector.style.background = scenarioColors[scenario];
+        
+        // 更新悬浮卡片场景标签
+        const flipCard = document.getElementById('flipCard');
+        flipCard.classList.remove('flipped'); // 确保卡片正面朝上
+        document.getElementById('orderScenarioTag').textContent = `场景${scenario}`;
+        document.getElementById('orderScenarioTag').style.backgroundColor = scenarioData[scenario].color;
+        
+        // 更新卡片容器样式
+        const flipContainer = document.getElementById('flipCardContainer');
+        flipContainer.className = `flip-card-container visible scenario-${scenario.toLowerCase()}`;
+        
+        // 重置工单到初始状态
+        resetOrderToInitialState();
+        
+        // 移动悬浮卡片到节点1的位置
+        moveCardToStep(0);
+        
+        // 显示悬浮卡片
+        flipContainer.classList.add('visible');
+        
+        // 更新步骤状态
+        updateStepStates();
+        
+        // 更新背面图片
+        updateBackImage();
+        
+        // 新增：给流程容器添加场景类
+        const processContainer = document.querySelector('.process-container');
+        // 移除之前的场景类
+        processContainer.classList.remove('scenario-a', 'scenario-b', 'scenario-c');
+        // 添加当前场景类
+        processContainer.classList.add(`scenario-${scenario.toLowerCase()}`);
+    }
+    
+    // 翻转卡片
+    function flipCard() {
+        const flipCard = document.getElementById('flipCard');
+        isFlipped = !isFlipped;
+        
+        if (isFlipped) {
+            flipCard.classList.add('flipped');
+        } else {
+            flipCard.classList.remove('flipped');
+        }
+    }
+    
+    // 重置工单到初始状态
+    function resetOrderToInitialState() {
+        // 清除所有高亮
+        clearHighlights();
+        
+        // 重置所有字段为空
+        resetAllOrderFields();
+        
+        // 显示客户图片占位符
+        showCustomerImagePlaceholder();
+        
+        // 重置翻转状态
+        isFlipped = false;
+        document.getElementById('flipCard').classList.remove('flipped');
+        
+        // 更新背面图片
+        updateBackImage();
+    }
+    
+    // 重置所有订单字段为空
+    function resetAllOrderFields() {
+        // 清除详情字段
+        const detailFields = ['orderCustomerCode', 'orderCustomerName', 'orderAddressCode', 
+                             'orderBusinessType', 'orderOperatorId', 'orderOperatorName'];
+        
+        detailFields.forEach(fieldId => {
+            const element = document.getElementById(fieldId);
+            if (element) {
+                element.textContent = '未填写';
+                element.className = 'detail-value empty';
+                element.classList.remove('updated');
+            }
+        });
+        
+        // 清除时间字段
+        const timestampFields = ['orderAcceptTime', 'orderFirstProcessTime', 'orderBossAssignTime',
+                               'orderVisitTime', 'orderVisitDuration', 'orderCompletionTime',
+                               'orderFollowupTime', 'orderSatisfaction', 'orderBossProduct'];
+        
+        timestampFields.forEach(fieldId => {
+            const element = document.getElementById(fieldId);
+            if (element) {
+                element.textContent = '未记录';
+                element.className = 'timestamp-value empty';
+                element.classList.remove('updated');
+            }
+        });
+    }
+    
+    // 显示客户图片占位符
+    function showCustomerImagePlaceholder() {
+        const placeholder = document.getElementById('customerImagePlaceholder');
+        const customerImage = document.getElementById('customerImage');
+        
+        placeholder.style.display = 'block';
+        customerImage.style.display = 'none';
+        customerImage.src = '';
+    }
+    
+    // 显示客户图片
+    function showCustomerImage() {
+        const placeholder = document.getElementById('customerImagePlaceholder');
+        const customerImage = document.getElementById('customerImage');
+        
+        placeholder.style.display = 'none';
+        customerImage.style.display = 'block';
+        customerImage.src = 'pic/lh.jpg';
+    }
+    
+    // 点击步骤
+    function clickStep(step) {
+        if (!currentScenario) return;
+        
+        const scenario = scenarioData[currentScenario];
+        const skippedSteps = scenario.skippedSteps;
+        
+        // 检查步骤是否可点击
+        if (skippedSteps.includes(step)) {
+            return; // 跳过的步骤不可点击
+        }
+        
+        // 检查步骤是否在当前场景可用
+        if (!scenario.steps.includes(step)) {
+            return;
+        }
+        
+        // 清除之前的高亮
+        clearHighlights();
+        
+        // 更新当前步骤
+        currentStep = step;
+        
+        // 获取该步骤的数据
+        const stepData = orderDataTemplates[currentScenario][step] || {};
+        
+        // 计算该步骤新增或变化的字段
+        const updatedFields = calculateUpdatedFieldsForStep(step);
+        
+        // 记录当前高亮的字段
+        currentHighlightedFields = updatedFields;
+        
+        // 移动悬浮卡片
+        moveCardToStep(step);
+        
+        // 更新步骤状态
+        updateStepStates();
+        
+        // 更新悬浮卡片，并高亮该步骤新增或变化的字段
+        updateOrderCardWithStepData(step, updatedFields);
+        
+        // 更新背面图片
+        updateBackImage();
+        
+        // 确保卡片正面朝上
+        isFlipped = false;
+        document.getElementById('flipCard').classList.remove('flipped');
+        
+        // 检查是否需要显示客户图片（节点4、5、6时显示图片，其他节点显示占位符）
+        if (step >= 4 && stepData.showCustomerImage) {
+            showCustomerImage();
+        } else {
+            showCustomerImagePlaceholder();
+        }
+    }
+    
+    // 更新背面图片
+    function updateBackImage() {
+        const imageElement = document.getElementById('backImage');
+        const descriptionElement = document.getElementById('backDescription');
+        
+        // 获取当前场景和步骤的图片配置
+        const config = backImageConfig[currentScenario]?.[currentStep] || 
+                      { image: '', description: '无图片' };
+        
+        if (config.image && config.image !== '') {
+            imageElement.src = config.image;
+            imageElement.alt = config.description;
+            imageElement.style.display = 'block';
+            descriptionElement.textContent = config.description;
+        } else {
+            imageElement.src = '';
+            imageElement.style.display = 'none';
+            descriptionElement.textContent = '当前节点无图片';
+        }
+    }
+    
+    // 计算指定步骤新增或变化的字段
+    function calculateUpdatedFieldsForStep(step) {
+        const stepData = orderDataTemplates[currentScenario][step] || {};
+        const updatedFields = {};
+        
+        // 获取当前步骤之前所有步骤的数据
+        let previousData = {};
+        for (let i = 1; i < step; i++) {
+            const prevStepData = orderDataTemplates[currentScenario][i] || {};
+            previousData = { ...previousData, ...prevStepData };
+        }
+        
+        // 比较当前步骤数据与之前步骤数据，找出新增或变化的字段
+        Object.keys(stepData).forEach(key => {
+            if (key !== 'stepDescription' && key !== 'showCustomerImage') {
+                // 如果字段在之前步骤中不存在，或者值发生了变化，则标记为更新
+                if (!previousData.hasOwnProperty(key) || previousData[key] !== stepData[key]) {
+                    updatedFields[key] = true;
+                }
+            }
+        });
+        
+        return updatedFields;
+    }
+    
+    // 移动卡片到指定步骤
+    function moveCardToStep(step) {
+        const flipContainer = document.getElementById('flipCardContainer');
+        const container = document.querySelector('.process-container');
+        
+        // 获取容器和卡片的宽度
+        const containerRect = container.getBoundingClientRect();
+        const cardWidth = flipContainer.offsetWidth;
+        
+        if (step === 0) {
+            // 初始位置（节点1的位置）
+            if (step1Position) {
+                flipContainer.style.left = `${step1Position.left}px`;
+                flipContainer.style.top = `${step1Position.top}px`;
+            } else {
+                // 如果step1Position未计算，使用默认位置
+                flipContainer.style.left = '1%';
+                flipContainer.style.top = '10px';
+            }
+        } else {
+            // 获取步骤元素
+            const stepElement = document.getElementById(`step${step}`);
+            const stepRect = stepElement.getBoundingClientRect();
+            
+            // 计算卡片位置，使节点圆圈在卡片垂直中线
+            let cardLeft = stepRect.left - containerRect.left - (cardWidth / 2) + (stepRect.width / 2);
+            
+            // 卡片在节点正下方，距离节点底部1px
+            const cardTop = stepRect.bottom - containerRect.top + 1;
+            
+            // 边界检查：确保卡片不超出容器右侧边界
+            const maxLeft = containerRect.width - cardWidth;
+            cardLeft = Math.min(cardLeft, maxLeft);
+            
+            // 边界检查：确保卡片不超出容器左侧边界
+            cardLeft = Math.max(0, cardLeft);
+            
+            // 设置卡片位置
+            flipContainer.style.left = `${cardLeft}px`;
+            flipContainer.style.top = `${Math.max(90, cardTop)}px`;
+        }
+    }
+    
+    // 更新步骤状态
+    function updateStepStates() {
+        const scenario = scenarioData[currentScenario];
+        const skippedSteps = scenario.skippedSteps;
+        
+        for (let i = 1; i <= 6; i++) {
+            const stepElement = document.getElementById(`step${i}`);
+            
+            // 重置状态
+            stepElement.classList.remove('step-active', 'step-completed', 'step-skipped', 'step-disabled');
+            
+            if (skippedSteps.includes(i)) {
+                // 跳过的步骤 - 灰色不可点
+                stepElement.classList.add('step-skipped');
+            } else if (i === currentStep && currentStep > 0) {
+                // 当前步骤
+                stepElement.classList.add('step-active');
+            } else if (scenario.steps.includes(i)) {
+                // 可用但未选中的步骤 - 正常可点击
+                stepElement.classList.remove('step-disabled');
+            } else {
+                // 其他步骤（禁用）
+                stepElement.classList.add('step-disabled');
+            }
+        }
+    }
+    
+    // 清除所有高亮
+    function clearHighlights() {
+        // 清除详情字段高亮
+        const detailFields = ['orderCustomerCode', 'orderCustomerName', 'orderAddressCode', 
+                             'orderBusinessType', 'orderOperatorId', 'orderOperatorName'];
+        
+        detailFields.forEach(fieldId => {
+            const element = document.getElementById(fieldId);
+            if (element) {
+                element.classList.remove('updated');
+            }
+        });
+        
+        // 清除时间字段高亮
+        const timestampFields = ['orderAcceptTime', 'orderFirstProcessTime', 'orderBossAssignTime',
+                               'orderVisitTime', 'orderVisitDuration', 'orderCompletionTime',
+                               'orderFollowupTime', 'orderSatisfaction', 'orderBossProduct'];
+        
+        timestampFields.forEach(fieldId => {
+            const element = document.getElementById(fieldId);
+            if (element) {
+                element.classList.remove('updated');
+            }
+        });
+    }
+    
+    // 更新悬浮工单卡片（带步骤数据）
+    function updateOrderCardWithStepData(step, updatedFields = {}) {
+        // 获取该步骤的数据
+        const stepData = orderDataTemplates[currentScenario][step] || {};
+        
+        // 获取该步骤及之前所有步骤的累积数据
+        let cumulativeData = {};
+        for (let i = 1; i <= step; i++) {
+            const currentStepData = orderDataTemplates[currentScenario][i] || {};
+            cumulativeData = { ...cumulativeData, ...currentStepData };
+        }
+        
+        // 更新客户信息
+        updateDetailField('orderCustomerCode', cumulativeData.customerCode, updatedFields.customerCode);
+        updateDetailField('orderCustomerName', cumulativeData.customerName, updatedFields.customerName);
+        updateDetailField('orderAddressCode', cumulativeData.addressCode, updatedFields.addressCode);
+        updateDetailField('orderBusinessType', cumulativeData.businessType, updatedFields.businessType);
+        updateDetailField('orderOperatorId', cumulativeData.operatorId, updatedFields.operatorId);
+        updateDetailField('orderOperatorName', cumulativeData.operatorName, updatedFields.operatorName);
+        
+        // 更新时间信息
+        updateTimestampField('orderAcceptTime', cumulativeData.acceptTime, updatedFields.acceptTime);
+        updateTimestampField('orderFirstProcessTime', cumulativeData.firstProcessTime, updatedFields.firstProcessTime);
+        updateTimestampField('orderBossAssignTime', cumulativeData.bossAssignTime, updatedFields.bossAssignTime);
+        updateTimestampField('orderVisitTime', cumulativeData.visitTime, updatedFields.visitTime);
+        updateTimestampField('orderVisitDuration', cumulativeData.visitDuration, updatedFields.visitDuration);
+        updateTimestampField('orderCompletionTime', cumulativeData.completionTime, updatedFields.completionTime);
+        updateTimestampField('orderFollowupTime', cumulativeData.followupTime, updatedFields.followupTime);
+        updateTimestampField('orderSatisfaction', cumulativeData.satisfaction, updatedFields.satisfaction);
+        
+        // 更新BOSS产品字段
+        updateTimestampField('orderBossProduct', cumulativeData.bossProduct, updatedFields.bossProduct);
+    }
+    
+    // 更新详情字段
+    function updateDetailField(elementId, value, isUpdated) {
+        const element = document.getElementById(elementId);
+        const isEmpty = !value || value === '';
+        
+        element.textContent = isEmpty ? '未填写' : value;
+        element.className = isEmpty ? 'detail-value empty' : 'detail-value';
+        
+        if (isUpdated && !isEmpty) {
+            element.classList.add('updated');
+        }
+    }
+    
+    // 更新时间戳字段
+    function updateTimestampField(elementId, value, isUpdated) {
+        const element = document.getElementById(elementId);
+        const isEmpty = !value || value === '';
+        
+        element.textContent = isEmpty ? '未记录' : value;
+        element.className = isEmpty ? 'timestamp-value empty' : 'timestamp-value';
+        
+        if (isUpdated && !isEmpty) {
+            element.classList.add('updated');
+        }
+    }
+</script>
+</body>
+</html>

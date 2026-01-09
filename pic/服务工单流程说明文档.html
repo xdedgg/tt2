@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
+    <title>服务工单系统融合流程与实施方案</title>
+    <script src="https://unpkg.com/html-docx-js/dist/html-docx.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', 'SimSun', serif;
+            line-height: 1.5;
+        }
+        
+        body {
+            background-color: #f8fafc;
+            color: #000000;
+            padding: 0;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        /* 下载按钮容器 - 放在右上角 */
+        .download-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .download-btn {
+            display: inline-block;
+            padding: 10pt 20pt;
+            background-color: #4a7fc1;
+            color: white;
+            text-decoration: none;
+            border: none;
+            border-radius: 4pt;
+            font-size: 14pt;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .download-btn:hover {
+            background-color: #3a6fb1;
+        }
+        
+        /* Word文档样式 */
+        .word-document {
+            width: 21cm;
+            min-height: 29.7cm;
+            margin: 20px auto;
+            padding: 2.5cm 3cm;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .document-title {
+            text-align: center;
+            font-size: 24pt;
+            font-weight: bold;
+            margin-bottom: 30pt;
+            color: #000000;
+            border-bottom: 2pt solid #000000;
+            padding-bottom: 15pt;
+        }
+        
+        .section {
+            margin-bottom: 30pt;
+            page-break-inside: avoid;
+        }
+        
+        .section-title {
+            font-size: 18pt;
+            font-weight: bold;
+            margin: 20pt 0 10pt;
+            color: #000000;
+            border-bottom: 1pt solid #666666;
+            padding-bottom: 5pt;
+        }
+        
+        .subsection-title {
+            font-size: 16pt;
+            font-weight: bold;
+            margin: 15pt 0 8pt;
+            color: #000000;
+            padding-left: 10pt;
+            border-left: 3pt solid #666666;
+        }
+        
+        .subsection-subtitle {
+            font-size: 14pt;
+            font-weight: bold;
+            margin: 12pt 0 6pt;
+            color: #000000;
+        }
+        
+        p {
+            font-size: 12pt;
+            margin: 0 0 10pt;
+            text-align: justify;
+            text-indent: 24pt;
+        }
+        
+        ul, ol {
+            margin: 8pt 0 12pt 36pt;
+            font-size: 12pt;
+        }
+        
+        li {
+            margin-bottom: 6pt;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12pt 0;
+            font-size: 11pt;
+            table-layout: fixed; /* 确保表格列宽固定 */
+        }
+        
+        table th {
+            background-color: #f2f2f2;
+            border: 1pt solid #000000;
+            padding: 8pt;
+            text-align: left;
+            font-weight: bold;
+            vertical-align: top; /* 确保表头与内容垂直对齐 */
+        }
+        
+        table td {
+            border: 1pt solid #666666;
+            padding: 6pt 8pt;
+            vertical-align: top; /* 确保单元格内容顶部对齐 */
+        }
+
+        /* 表格列宽设置 */
+        .col-15 { width: 15%; }
+        .col-20 { width: 20%; }
+        .col-25 { width: 25%; }
+        .col-30 { width: 30%; }
+        .col-35 { width: 35%; }
+        .col-40 { width: 40%; }
+        .col-50 { width: 50%; }
+        .col-60 { width: 60%; }
+
+        /* 新增：问题对比表格样式 */
+        .problem-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15pt 0;
+            font-size: 11pt;
+            border: 2pt solid #e74c3c; /* 红色边框强调问题 */
+        }
+
+        .problem-table th {
+            background-color: #fce4ec; /* 浅红色表头 */
+            color: #c62828;
+            border: 1pt solid #c62828;
+            padding: 10pt;
+            text-align: left;
+            font-weight: bold;
+            vertical-align: top;
+        }
+
+        .problem-table td {
+            border: 1pt solid #ef9a9a;
+            padding: 8pt 10pt;
+            vertical-align: top;
+        }
+        
+        .problem-table tr:nth-child(even) {
+            background-color: #fff5f5;
+        }
+
+        /* 流程步骤竖排样式 */
+        .process-vertical-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15pt;
+            margin: 20pt 0;
+        }
+        
+        .process-step-item {
+            position: relative;
+            padding: 15pt 15pt 15pt 50pt; /* 左侧留出空间给竖线 */
+            background: #f8f9fa;
+            border: 1pt solid #dee2e6;
+            border-radius: 4pt;
+        }
+
+        /* 竖排连接线 */
+        .process-step-item::before {
+            content: '';
+            position: absolute;
+            left: 19pt;
+            top: 0;
+            bottom: 0;
+            width: 2pt;
+            background-color: #4a7fc1;
+        }
+
+        .process-number-circle {
+            position: absolute;
+            left: 6pt;
+            top: 15pt;
+            width: 28pt;
+            height: 28pt;
+            background-color: #4a7fc1;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14pt;
+            z-index: 1;
+        }
+        
+        .step-number {
+            font-weight: bold;
+            font-size: 14pt;
+            color: #2c5282;
+            margin-bottom: 5pt;
+        }
+        
+        .step-desc {
+            font-size: 11pt;
+            color: #333333;
+        }
+        
+        .scenario-item {
+            margin: 10pt 0 15pt;
+            border: 1pt solid #e0e0e0;
+            padding: 12pt;
+            background: #fafafa;
+        }
+        
+        .scenario-title {
+            font-weight: bold;
+            font-size: 14pt;
+            margin-bottom: 8pt;
+            color: #000000;
+        }
+        
+        .feature-list {
+            background: #f8f9fa;
+            border-left: 4pt solid #4a7fc1;
+            padding: 10pt 15pt;
+            margin: 12pt 0;
+        }
+
+        .solution-item {
+            margin: 12pt 0;
+            padding: 12pt;
+            background: #f0f7ff;
+            border-left: 4pt solid #4a7fc1;
+        }
+
+        .solution-title {
+            font-weight: bold;
+            font-size: 13pt;
+            color: #2c5282;
+            margin-bottom: 5pt;
+        }
+        
+        /* 打印样式 */
+        @media print {
+            body {
+                background: white;
+            }
+            
+            .word-document {
+                width: 100%;
+                min-height: auto;
+                margin: 0;
+                padding: 2cm;
+                box-shadow: none;
+            }
+            
+            .download-container {
+                display: none;
+            }
+
+            .process-step-item {
+                page-break-inside: avoid;
+            }
+        }
+        
+        @media screen and (max-width: 21cm) {
+            .word-document {
+                width: 100%;
+                padding: 2cm;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="download-container">
+        <button class="download-btn" onclick="downloadWord()">下载Word文档</button>
+    </div>
+    
+    <div class="word-document" id="documentContent">
+        <div class="document-title">服务工单系统融合流程与实施方案</div>
+        
+        <div class="section">
+            <p><strong>版本：</strong>V1.0</p>
+            <p><strong>日期：</strong>2025年1月7日</p>
+        </div>
+        
+        <!-- 第一章 -->
+        <div class="section">
+            <h2 class="section-title">一、文档概述</h2>
+            <p>本文档旨在阐述服务工单流程体系的整改方案，聚焦于<strong>BOSS工单</strong>与<strong>客服工单</strong>的深度融合。方案基于BOSS工单流，打通装维预开通、上门施工及竣工授权等关键环节，构建"营业、装维、客服"服务闭环。</p>
+            <p>文档针对当前业务中存在的工单数据不同步、装维"首响时长"缺失以及"有线电视及宽带安装及时率"不达标等问题，提供了技术整改路径。通过数据同步，实现关键节点的系统自动记录，确保服务指标的合规性。</p>
+            <p>同时，本文档规划了涵盖"营业厅办理、客服接单、网格员全流程"在内的三大服务场景，明确了各岗位的预期变化与作业规范。内容涵盖功能建设需求、异常处理机制，为系统的后续开发、功能测试及人员培训提供参考。</p>
+        </div>
+
+        <!-- 第二章 -->
+        <div class="section">
+            <h2 class="section-title">二、预期变化</h2>
+            
+            <h3 class="subsection-title">2.1 关键指标问题及解决方案</h3>
+            
+            <!-- 使用表格突出显示问题 -->
+            <table class="problem-table">
+                <thead>
+                    <tr>
+                        <th class="col-60">问题现象（指标待完善）</th>
+                        <th class="col-40">解决方法</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <strong>数据同步问题：</strong><br>
+                            工单系统与BOSS系统新装工单数据不同步，装维工单的"首响时长"指标无系统统计数据或数据无效。
+                        </td>
+                        <td>
+                            打通系统，实现数据实时双向同步。
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>时效指标不达标：</strong><br>
+                            1. 有线电视安装首次响应时长<br>
+                            2. 宽带业务安装首次响应时长<br>
+                            3. 有线电视安装及时率<br>
+                            4. 宽带安装及时率
+                        </td>
+                        <td>
+                            系统自动记录关键节点（接单T1、预开通T2、派单T3、上门T4、竣工T4、回访T5……）等时间戳，替代人工填单。基于这些准确、连续的时序数据，预设规则自动或手动计算各项指标。
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3 class="subsection-title">2.2 对分公司营业员的影响</h3>
+            <ul>
+                <li>系统自动记录所有操作时间，无需手动填写</li>
+                <li>新增派单、回单操作入口</li>
+                <li>支持一键查看关联工单，提升处理效率</li>
+                <li>客户安装情况可溯源</li>
+            </ul>
+            
+            <h3 class="subsection-title">2.3 对网格员的影响</h3>
+            <ul>
+                <li>支持智慧宝端全流程操作</li>
+                <li>新增施工拍照功能，自动获取工单类型</li>
+                <li>系统记录上门时间和服务时长</li>
+            </ul>
+            
+            <h3 class="subsection-title">2.4 对客服的影响</h3>
+            <ul>
+                <li>自动关联BOSS工单数据，形成完整服务闭环</li>
+                <li>所有工单（包括BOSS工单和无需上门的工单）均汇总，方便今后生成报表进行服务质量分析</li>
+                <li>需对现场照片审查及服务流程监察，以确保功能上线效果</li>
+            </ul>
+        </div>
+
+        <!-- 第三章 -->
+        <div class="section">
+            <h2 class="section-title">三、功能建设与开发需求</h2>
+            <ol>
+                <li>已具备BOSS系统的工单流，支持装维预开通，上门施工竣工后再开通授权。</li>
+                <li>需增加智慧宝端BOSS工单派单和回单功能，流程进度与BOSS同步。支持网格员通过移动设备完成全流程操作，实现移动端工单派发、接收、处理、回单，并确保移动端与PC端数据实时同步。</li>
+                <li>需与客服系统打通，包括BOSS工单与客服单关联，以及将BOSS工单数据汇总到客服系统。建立双向数据通道，实现BOSS工单与客服工单自动关联，保障数据一致性，并以最优方案进行同步，保障业务开通时效性。</li>
+                <li>需在现有的客户及受理单页面增加查看对应工单的功能，达到溯源效果。实现业务全过程可追溯，支持关联工单查看及历史工单查询功能。</li>
+                <li>需在智慧宝端增加工单施工、竣工时的拍照等功能。支持现场照片上传、存储和查看，支持多张照片上传，拍照记录与工单关联，智慧宝与BOSS同步互通。同时考虑是否支持添加无需BOSS操作的工单类型（拍照记录服务过程）。</li>
+                <li>需制定工作要求方案，异常处理机制，进行多场景测试，BOSS中以工单流方式配置开户、增机等营业项目。</li>
+                <li>需各个岗位人员配置和管理要求。</li>
+            </ol>
+        </div>
+
+        <!-- 原第五章流程总览，现改为第四章 -->
+        <div class="section">
+            <h2 class="section-title">四、流程总览</h2>
+            <p>服务工单流程包含6个核心节点，形成一个完整的业务闭环。流程节点如下所示：</p>
+
+            <!-- 竖排流程布局 -->
+            <div class="process-vertical-container">
+                
+                <div class="process-step-item">
+                    <div class="process-number-circle">1</div>
+                    <div class="step-number">接单</div>
+                    <div class="step-desc">客服通过电话接收客户服务请求，创建客服工单并派发给相关执行人员。</div>
+                </div>
+
+                <div class="process-step-item">
+                    <div class="process-number-circle">2</div>
+                    <div class="step-number">预开通</div>
+                    <div class="step-desc">初步处理客户需求，收费，在BOSS中录入产品，产品状态为未激活。</div>
+                </div>
+
+                <div class="process-step-item">
+                    <div class="process-number-circle">3</div>
+                    <div class="step-number">BOSS派单</div>
+                    <div class="step-desc">将BOSS工单派发给网格员。</div>
+                </div>
+
+                <div class="process-step-item">
+                    <div class="process-number-circle">4</div>
+                    <div class="step-number">装维，竣工</div>
+                    <div class="step-desc">网格员上门服务、拍照记录、BOSS回单（自动触发预开通的受理单竣工）。</div>
+                </div>
+
+                <div class="process-step-item">
+                    <div class="process-number-circle">5</div>
+                    <div class="step-number">汇总数据</div>
+                    <div class="step-desc">在此之前以最优方案完成数据关联及同步至客服系统。</div>
+                </div>
+
+                <div class="process-step-item">
+                    <div class="process-number-circle">6</div>
+                    <div class="step-number">结束流程</div>
+                    <div class="step-desc">回访确认、满意度记录、服务流程闭环。</div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 原第四章三大服务场景，现改为第五章 -->
+        <div class="section">
+            <h2 class="section-title">五、三大服务场景</h2>
+            <p>系统支持三种主要服务场景，覆盖不同业务入口和流程路径：</p>
+
+            <div class="scenario-item">
+                <div class="scenario-title">A场景：营业厅办理</div>
+                <p><strong>场景描述：</strong>用户到营业厅办理业务，网格员不进行BOSS业务操作。</p>
+                <p><strong>适用流程节点：</strong>节点2 → 节点3 → 节点4 → 节点5 → 节点6（跳过节点1）</p>
+                <p><strong>操作人员：</strong>营业员（PC端操作）、网格员（仅施工）</p>
+                <p><strong>流程特点：</strong></p>
+                <ul>
+                    <li>营业员通过PC端收钱和业务受理操作</li>
+                    <li>营业员通过PC派BOSS工单给网格员</li>
+                    <li>网格员仅负责现场施工和拍照</li>
+                    <li>也适合网格员不操作收钱和BOSS开户的所有场景</li>
+                </ul>
+            </div>
+
+            <div class="scenario-item">
+                <div class="scenario-title">B场景：客服电话接单</div>
+                <p><strong>场景描述：</strong>客服电话接单并派客服单给网格员。</p>
+                <p><strong>适用流程节点：</strong>节点1 → 节点2 → 节点3 → 节点4 → 节点5 → 节点6（完整流程）</p>
+                <p><strong>操作人员：</strong>客服、网格员</p>
+                <p><strong>流程特点：</strong></p>
+                <ul>
+                    <li>客服派客服单给网格员</li>
+                    <li>网格员全流程操作，包括施工、拍照、回单</li>
+                    <li>客服工单与BOSS工单需关联</li>
+                </ul>
+            </div>
+
+            <div class="scenario-item">
+                <div class="scenario-title">C场景：网格员全流程</div>
+                <p><strong>场景描述：</strong>网格员自己联系的客户并进行全流程操作。</p>
+                <p><strong>适用流程节点：</strong>节点2 → 节点3 → 节点4 → 节点5 → 节点6（跳过节点1）</p>
+                <p><strong>操作人员：</strong>网格员</p>
+                <p><strong>流程特点：</strong></p>
+                <ul>
+                    <li>网格员全流程独立操作</li>
+                    <li>网格员通过智慧宝派BOSS单给自己</li>
+                    <li>无客服参与，直接从预开通开始</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 第六章 -->
+        <div class="section">
+            <h2 class="section-title">六、异常处理与流程中断场景</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th class="col-15">中断位置</th>
+                        <th class="col-35">异常情况</th>
+                        <th class="col-50">处理方式</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>节点1、2之间</td>
+                        <td>结束客服单，无需创建BOSS工单</td>
+                        <td>直接结束客服工单，不触发后续BOSS流程</td>
+                    </tr>
+                    <tr>
+                        <td>节点2、3之间</td>
+                        <td>营业厅销户处理</td>
+                        <td>结束工单，客户通过其他途径重新下单则重新受理</td>
+                    </tr>
+                    <tr>
+                        <td rowspan="2">节点3、4之间</td>
+                        <td>网格员无法上门：退单、改派</td>
+                        <td>将工单退回或改派给其他网格员</td>
+                    </tr>
+                    <tr>
+                        <td>客户反悔或跑单</td>
+                        <td>营业厅销户处理，结束工单。如客户通过其他途径下单则重新受理</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 class="subsection-title">重要业务规则</h3>
+            <ul>
+                <li><strong>客服接单后客户跳单：</strong>被派单的网格员结束工单。客户从其余途径重新开始记录</li>
+                <li><strong>已受理状态客户反悔：</strong>进行BOSS销户，由网格员或营业厅人员结束工单（考虑到销户操作只有营业厅能做，所以结束工单可选择由谁来操作）</li>
+                <li><strong>BOSS工单必须回单：</strong>所有BOSS工单必须完成回单操作，数据传给客服系统，结束，闭环</li>
+                <li><strong>既有客服工单也有BOSS工单：</strong>B场景中的网格员接到客服工单后，业务受理时自动创建BOSS工单，工单竣工时，与对应的客服工单关联，可自动结束客服工单或增加弹窗提示：“检测到存在未关闭的客服工单[单号]，是否一并结束？尽量减少网格员的回单工作量。</li>
+                <li><strong>无需BOSS操作的工单：</strong>如需对协助用户操作，或咨询投诉类服务进行拍照记录，则需要系统支持网格员创建无需BOSS操作的工单类型</li>
+            </ul>
+        </div>
+        
+    </div>
+
+    <script>
+        function downloadWord() {
+            // 获取当前页面的最新文档内容
+            const content = document.getElementById('documentContent').innerHTML;
+            
+            // 创建Word文档 - 优化的样式确保Word兼容性
+            const docContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>
+                        @page {
+                            margin: 2.5cm 3cm;
+                        }
+                        body { 
+                            font-family: 'Microsoft YaHei', 'SimSun', serif; 
+                            line-height: 1.5; 
+                            margin: 0;
+                            padding: 0;
+                            width: 100%;
+                        }
+                        .word-document {
+                            width: 100%;
+                            padding: 0;
+                        }
+                        .document-title {
+                            text-align: center;
+                            font-size: 24pt;
+                            font-weight: bold;
+                            margin-bottom: 30pt;
+                            color: #000000;
+                            border-bottom: 2pt solid #000000;
+                            padding-bottom: 15pt;
+                        }
+                        .section {
+                            margin-bottom: 30pt;
+                            page-break-inside: avoid;
+                        }
+                        .section-title {
+                            font-size: 18pt;
+                            font-weight: bold;
+                            margin: 20pt 0 10pt;
+                            color: #000000;
+                            border-bottom: 1pt solid #666666;
+                            padding-bottom: 5pt;
+                        }
+                        .subsection-title {
+                            font-size: 16pt;
+                            font-weight: bold;
+                            margin: 15pt 0 8pt;
+                            color: #000000;
+                            padding-left: 10pt;
+                            border-left: 3pt solid #666666;
+                        }
+                        .subsection-subtitle {
+                            font-size: 14pt;
+                            font-weight: bold;
+                            margin: 12pt 0 6pt;
+                            color: #000000;
+                        }
+                        p { 
+                            font-size: 12pt; 
+                            margin: 0 0 10pt; 
+                            text-align: justify; 
+                            text-indent: 24pt; 
+                        }
+                        ul, ol { 
+                            margin: 8pt 0 12pt 36pt; 
+                            font-size: 12pt; 
+                        }
+                        li { 
+                            margin-bottom: 6pt; 
+                        }
+                        /* 修复表格对齐问题 */
+                        table { 
+                            width: 100%; 
+                            border-collapse: collapse; 
+                            margin: 12pt 0; 
+                            font-size: 11pt; 
+                            table-layout: fixed; 
+                            border-spacing: 0;
+                        }
+                        table th { 
+                            background-color: #f2f2f2; 
+                            border: 1pt solid #000000; 
+                            padding: 8pt; 
+                            text-align: left; 
+                            font-weight: bold; 
+                            vertical-align: top;
+                        }
+                        table td { 
+                            border: 1pt solid #666666; 
+                            padding: 6pt 8pt; 
+                            vertical-align: top;
+                        }
+                        /* 表格列宽设置 */
+                        .col-15 { width: 15%; }
+                        .col-20 { width: 20%; }
+                        .col-25 { width: 25%; }
+                        .col-30 { width: 30%; }
+                        .col-35 { width: 35%; }
+                        .col-40 { width: 40%; }
+                        .col-50 { width: 50%; }
+                        .col-60 { width: 60%; }
+                        
+                        .problem-table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin: 15pt 0;
+                            font-size: 11pt;
+                            border: 2pt solid #e74c3c;
+                            table-layout: fixed;
+                        }
+                        .problem-table th {
+                            background-color: #fce4ec;
+                            color: #c62828;
+                            border: 1pt solid #c62828;
+                            padding: 10pt;
+                            text-align: left;
+                            font-weight: bold;
+                            vertical-align: top;
+                        }
+                        .problem-table td {
+                            border: 1pt solid #ef9a9a;
+                            padding: 8pt 10pt;
+                            vertical-align: top;
+                        }
+                        .problem-table tr:nth-child(even) {
+                            background-color: #fff5f5;
+                        }
+                        /* 简化的流程样式 - 更兼容Word */
+                        .process-vertical-container {
+                            display: block;
+                            margin: 20pt 0;
+                        }
+                        .process-step-item {
+                            border: 1pt solid #dee2e6;
+                            padding: 15pt 15pt 15pt 50pt;
+                            margin: 10pt 0;
+                            background: #f8f9fa;
+                            page-break-inside: avoid;
+                            position: relative;
+                        }
+                        .process-step-item::before {
+                            content: '';
+                            position: absolute;
+                            left: 19pt;
+                            top: 0;
+                            bottom: 0;
+                            width: 2pt;
+                            background-color: #4a7fc1;
+                        }
+                        .process-number-circle {
+                            position: absolute;
+                            left: 6pt;
+                            top: 15pt;
+                            width: 28pt;
+                            height: 28pt;
+                            background-color: #4a7fc1;
+                            color: white;
+                            border-radius: 50%;
+                            text-align: center;
+                            line-height: 28pt;
+                            font-weight: bold;
+                            font-size: 14pt;
+                            z-index: 1;
+                        }
+                        .step-number {
+                            font-weight: bold;
+                            font-size: 14pt;
+                            color: #2c5282;
+                            margin-bottom: 5pt;
+                        }
+                        .step-desc {
+                            font-size: 11pt;
+                            color: #333333;
+                        }
+                        .scenario-item { 
+                            border: 1pt solid #e0e0e0; 
+                            padding: 12pt; 
+                            margin: 10pt 0; 
+                            background: #fafafa; 
+                        }
+                        .scenario-title { 
+                            font-weight: bold; 
+                            font-size: 14pt; 
+                            margin-bottom: 8pt; 
+                            color: #000000; 
+                        }
+                        .feature-list { 
+                            background: #f8f9fa; 
+                            border-left: 4pt solid #4a7fc1; 
+                            padding: 10pt 15pt; 
+                            margin: 12pt 0; 
+                        }
+                        .solution-item {
+                            margin: 12pt 0;
+                            padding: 12pt;
+                            background: #f0f7ff;
+                            border-left: 4pt solid #4a7fc1;
+                        }
+                        .solution-title {
+                            font-weight: bold;
+                            font-size: 13pt;
+                            color: #2c5282;
+                            margin-bottom: 5pt;
+                        }
+                        /* 强制分页控制 */
+                        @media print {
+                            .section {
+                                page-break-inside: avoid;
+                            }
+                            .process-step-item {
+                                page-break-inside: avoid;
+                            }
+                            table {
+                                page-break-inside: avoid;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="word-document">
+                        ${content}
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            try {
+                // 使用html-docx-js库转换
+                const converted = htmlDocx.asBlob(docContent, {
+                    orientation: 'portrait',
+                    margins: { top: 1000, right: 1000, bottom: 1000, left: 1000 }
+                });
+                
+                // 保存为Word文档
+                saveAs(converted, '服务工单流程说明文档.docx');
+                
+                // 显示成功提示
+                alert('文档下载成功！文件名为：服务工单流程说明文档.docx');
+            } catch (error) {
+                console.error('文档生成失败:', error);
+                alert('文档生成失败，请检查浏览器兼容性或控制台错误信息。');
+            }
+        }
+        
+        // 页面加载后自动调整样式
+        window.addEventListener('load', function() {
+            // 确保文档内容适合打印
+            document.body.style.zoom = '90%';
+        });
+    </script>
+</body>
+</html>
